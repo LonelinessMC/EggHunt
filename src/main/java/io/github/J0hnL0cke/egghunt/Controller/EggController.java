@@ -12,7 +12,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
 import io.github.J0hnL0cke.egghunt.Controller.ConfigManager.CONFIG_ITEMS;
-import io.github.J0hnL0cke.egghunt.Controller.ConfigManager;
 import io.github.J0hnL0cke.egghunt.Model.Data;
 import io.github.J0hnL0cke.egghunt.Model.LogHandler;
 
@@ -39,24 +38,22 @@ public class EggController {
         OfflinePlayer oldOwner = data.getEggOwner();
         data.resetEggOwner(false, config);
         data.resetEggLocation();
-        String msg;
 
         if (config.getBoolean(CONFIG_ITEMS.RESP_EGG)) {
             if (config.getBoolean(CONFIG_ITEMS.RESP_IMM)) {
                 logger.log("Immediate respawn enabled- respawning egg");
                 respawnEgg(config, data, logger);
-                msg = "The dragon egg was destroyed and has respawned in The End!";
+                //msg = "The dragon egg was destroyed and has respawned in The End!";
                 if (oldOwner != null) { //prevent spamming of egg destruction
                 }
             } else {
                 logger.log("Immediate respawn disabled- egg will respawn after next dragon fight");
-                msg = "The dragon egg has been destroyed! It will respawn the next time the Ender Dragon is defeated.";
+                //msg = "The dragon egg has been destroyed! It will respawn the next time the Ender Dragon is defeated.";
             }
         } else {
             logger.log("Egg respawn is disabled");
-            msg = "The dragon egg has been destroyed!";
-
-        }        
+            //msg = "The dragon egg has been destroyed!";
+        }   
     }
     
     /**

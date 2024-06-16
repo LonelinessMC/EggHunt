@@ -2,14 +2,9 @@ package io.github.J0hnL0cke.egghunt.Controller;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.EntityType;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.checkerframework.common.returnsreceiver.qual.This;
-
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;

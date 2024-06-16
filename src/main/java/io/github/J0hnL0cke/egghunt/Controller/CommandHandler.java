@@ -2,17 +2,14 @@ package io.github.J0hnL0cke.egghunt.Controller;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CompassMeta;
 
 import io.github.J0hnL0cke.egghunt.Plugin;
 import io.github.J0hnL0cke.egghunt.Model.Data;
-import io.github.J0hnL0cke.egghunt.Model.Egg;
 import io.github.J0hnL0cke.egghunt.Model.Data.Egg_Storage_Type;
 
 public class CommandHandler {
