@@ -11,7 +11,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.EntityEquipment;
 import org.bukkit.scheduler.BukkitRunnable;
 
-import io.github.J0hnL0cke.egghunt.Model.Configuration;
+import io.github.J0hnL0cke.egghunt.Plugin;
+import io.github.J0hnL0cke.egghunt.Controller.ConfigManager.CONFIG_ITEMS;
 import io.github.J0hnL0cke.egghunt.Model.Data;
 import io.github.J0hnL0cke.egghunt.Model.Egg;
 import io.github.J0hnL0cke.egghunt.Model.LogHandler;
@@ -22,12 +23,12 @@ public class EventScheduler extends BukkitRunnable {
     public final int VOID_RESPAWN_OFFSET = 2; // how much higher than the highest block to respawn the egg when it falls into the void
 
     private Data data;
-    private Configuration config;
+    private Plugin plugin;
     private LogHandler logger;
 
-    public EventScheduler(Configuration config, Data data, LogHandler logger) {
+    public EventScheduler(Plugin plugin, Data data, LogHandler logger) {
         this.data = data;
-        this.config = config;
+        this.plugin = plugin;
         this.logger = logger;
     }
 
@@ -47,7 +48,7 @@ public class EventScheduler extends BukkitRunnable {
                 Location respawnLoc = data.getEggEntity().getLocation();
                 Egg.removeEgg(data.getEggEntity());
 
-                if (config.getEggInvulnerable()) {
+                if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.EGG_INV)) {
                     // get coords for egg to spawn at
                     //get highest block
                     Block highestBlock = respawnLoc.getWorld().getHighestBlockAt(respawnLoc);
@@ -58,11 +59,11 @@ public class EventScheduler extends BukkitRunnable {
                         yPos = respawnLoc.getWorld().getSeaLevel();
                     }
                     respawnLoc.setY(yPos);
-                    EggController.spawnEggItem(respawnLoc, config, data); //do not need to update data with this location since item spawn event will be called
-                    data.resetEggOwner(true, config);
+                    EggController.spawnEggItem(respawnLoc, this.plugin.getConfigManager(), data); //do not need to update data with this location since item spawn event will be called
+                    data.resetEggOwner(true, this.plugin.getConfigManager());
                 } else {
                     //alert and respawn if applicable
-                    EggController.eggDestroyed(config, data, logger);
+                    EggController.eggDestroyed(this.plugin.getConfigManager(), data, logger);
                 }
                 
             }

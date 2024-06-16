@@ -16,7 +16,8 @@ import org.bukkit.event.world.WorldSaveEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
-import io.github.J0hnL0cke.egghunt.Model.Configuration;
+import io.github.J0hnL0cke.egghunt.Plugin;
+import io.github.J0hnL0cke.egghunt.Controller.ConfigManager.CONFIG_ITEMS;
 import io.github.J0hnL0cke.egghunt.Model.Data;
 import io.github.J0hnL0cke.egghunt.Model.Egg;
 import io.github.J0hnL0cke.egghunt.Model.LogHandler;
@@ -27,14 +28,16 @@ import io.github.J0hnL0cke.egghunt.Model.LogHandler;
 public class MiscListener implements Listener {
 
     private LogHandler logger;
-    private Configuration config;
     private Data data;
+    private Announcement announcement;
+    private Plugin plugin;
 
 
-    public MiscListener(LogHandler logger, Configuration config, Data data) {
+    public MiscListener(Plugin plugin, LogHandler logger, Data data) {
         this.logger = logger;
-        this.config = config;
+        this.plugin = plugin;
         this.data = data;
+        this.announcement = Announcement.getInstance(plugin);
     }
 
     /**
@@ -54,7 +57,7 @@ public class MiscListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        EggController.updateOwnerTag(player, data, config);
+        EggController.updateOwnerTag(player, data, this.plugin.getConfigManager());
     }
 
     /**
@@ -64,7 +67,7 @@ public class MiscListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        EggController.dropEgg(player, data, config);
+        EggController.dropEgg(player, data, this.plugin.getConfigManager());
     }
 
     /**
@@ -78,7 +81,7 @@ public class MiscListener implements Listener {
 
         if (Egg.hasEgg(item)) {
             data.updateEggLocation(item);
-            EggController.makeEggInvulnerable(event.getEntity(), config);
+            EggController.makeEggInvulnerable(event.getEntity(), this.plugin.getConfigManager());
             log("made entity invulnerable");
         }
     }
@@ -90,7 +93,7 @@ public class MiscListener implements Listener {
     public void onBlockPlace(BlockPlaceEvent event) {
         if (Egg.hasEgg(event.getBlock())) {
             data.updateEggLocation(event.getBlock());
-            data.setEggOwner(event.getPlayer(), config);
+            data.setEggOwner(event.getPlayer(), this.plugin.getConfigManager());
         }
     }
     
@@ -129,7 +132,7 @@ public class MiscListener implements Listener {
                             && playerInv.getItemInMainHand().getType().equals(Material.AIR)) {
                         //interaction with empty main hand will remove the egg from the allay and put it in the player's inventory
                         data.updateEggLocation(event.getPlayer());
-                        data.setEggOwner(event.getPlayer(), config);
+                        data.setEggOwner(event.getPlayer(), this.plugin.getConfigManager());
 
                     }
                     break; //allay has an item, giving it the egg is not possible
@@ -147,7 +150,7 @@ public class MiscListener implements Listener {
                 if (!heldItem.getType().equals(Material.AIR)) { //if item in either hand
                     if (Egg.hasEgg(heldItem)) {
                         data.updateEggLocation(event.getRightClicked());
-                        data.setEggOwner(event.getPlayer(), config);
+                        data.setEggOwner(event.getPlayer(), this.plugin.getConfigManager());
                     }
                 }
 
@@ -164,17 +167,10 @@ public class MiscListener implements Listener {
         if (Egg.hasEgg(event.getBlock())) {
             data.updateEggLocation(event.getToBlock());
 
-            if (!config.getAccurateLocation()) {
-                //TODO disable accuracy here
-                //log("The egg teleported, showing players the egg's location before teleport");
-            } else {
-                //log("The egg teleported, showing players the egg's up-to-date location");
-            }
-
-            if (config.resetOwnerOnTeleport()) {
+            if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.RESET_OWNER)) {
                 if (data.getEggOwner() != null) {
-                    announce(String.format("The dragon egg has teleported. %s is no longer the owner.", data.getEggOwner().getName()));
-                    data.resetEggOwner(false, config);
+                    announcement.announce(String.format("The dragon egg has teleported. %s is no longer the owner.", data.getEggOwner().getName()));
+                    data.resetEggOwner(false, this.plugin.getConfigManager());
                 }
             }
         }
@@ -212,13 +208,13 @@ public class MiscListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerDeath(PlayerDeathEvent event) {
         if (!event.getKeepInventory() && Egg.hasEgg(event.getEntity().getInventory())) {
-            data.resetEggOwner(false, config);
+            data.resetEggOwner(false, this.plugin.getConfigManager());
     
             //change the death message
             String deathmsg = event.getDeathMessage();
     
-            if (deathmsg == null || deathmsg.isBlank()) {
-                announce(String.format("%s died and lost the dragon egg!", event.getEntity().getDisplayName()));
+            if (deathmsg == null || deathmsg.trim().isEmpty()) {
+                announcement.announce(String.format("%s died and lost the dragon egg!", event.getEntity().getDisplayName()));
     
             } else {
                 if (deathmsg.endsWith(".")) {
@@ -227,11 +223,6 @@ public class MiscListener implements Listener {
                 event.setDeathMessage(String.format("%s and lost the dragon egg!", deathmsg));
             }
         }
-    }
-    
-    //Helper methods
-    private void announce(String msg) {
-        Announcement.announce(msg, logger);
     }
 
     private void log(String message) {

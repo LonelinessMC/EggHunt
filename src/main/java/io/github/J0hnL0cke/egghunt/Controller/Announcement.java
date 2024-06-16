@@ -2,111 +2,174 @@ package io.github.J0hnL0cke.egghunt.Controller;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
-import org.bukkit.World;
 import org.bukkit.entity.Player;
 
+import io.github.J0hnL0cke.egghunt.Plugin;
 import io.github.J0hnL0cke.egghunt.Model.LogHandler;
 
-/**
- * Misc helper methods relating to player notification
- */
+import org.bukkit.command.CommandSender;
+
+import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.TextComponent;
+
 public class Announcement {
+    private static Announcement instance;
+    @SuppressWarnings("unused")
+    private final Plugin plugin;
+    private final LogHandler logger;
+    private final String prefix;
 
-    private static final String PREFIX_FORMAT_CODE = ChatColor.COLOR_CHAR+"l"; //bold
-    private static final ChatColor PREFIX_COLOR = ChatColor.DARK_PURPLE;
-    private static final ChatColor LOCATION_COLOR = ChatColor.GREEN;
-    private static final ChatColor CORRECT_COLOR = ChatColor.DARK_GREEN;
-    private static final ChatColor INCORRECT_COLOR = ChatColor.RED;
-    private static final ChatColor RESET_CODE = ChatColor.RESET;
-    private static final String RAW_MESSAGE_PREFIX = "[Egg Hunt] ";
-
-    public static void sendMessage(Player p, String message) {
-        p.sendMessage(formatMessage(message));
-    }
-
-    public static String formatLocation(Location destination, Location origin) {
-        //stringify the egg's location
-        int x = destination.getBlockX();
-        int y = destination.getBlockY();
-        int z = destination.getBlockZ();
-        World world = destination.getWorld();
-
-        //whether the two locations are in the same world, or false if origin is null
-        boolean sameWorld = origin != null && origin.getWorld().equals(destination.getWorld());
-
-        String worldName = formatWorld(world, sameWorld);
-        
-        String distanceStr = "";
-        if (sameWorld) {
-            double distance = destination.distance(origin);
-            if (!Double.isNaN(distance)) {
-                distanceStr = String.format(" (%d blocks away)", (int)distance);
-            }
+    public static Announcement getInstance(Plugin plugin) {
+        if (instance == null) {
+            instance = new Announcement(plugin);
         }
-
-        String loc = String.format("[%d, %d, %d]", x, y, z);
-        
-        return String.format("%s%s%s in %s%s", LOCATION_COLOR, loc, RESET_CODE, worldName, distanceStr);
-    }
-    
-    public static String formatWorld(World world, boolean correctWorld) {
-        String worldName;
-        switch (world.getEnvironment()) {
-            case NORMAL:
-                worldName = "The Overworld";
-                break;
-            case THE_END:
-                worldName = "The End";
-                break;
-            case NETHER:
-                worldName = "The Nether";
-                break;
-            case CUSTOM:
-            default:
-                worldName = world.getName();
-        }
-        ChatColor color = correctWorld ? CORRECT_COLOR : INCORRECT_COLOR;
-
-        return String.format("%s%s%s", color, worldName, RESET_CODE);
+        return instance;
     }
 
-    public static void announce(String message, LogHandler logger) {
-        List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
-        int playersNotified = 0;
+    private Announcement(Plugin plugin) {
+        this.plugin = plugin;
+        this.logger = LogHandler.getInstance(null);
+        this.prefix = plugin.getConfigManager().getString(ConfigManager.CONFIG_ITEMS.CHAT_PREFIX);
+    }
 
+    public void sendPrivateMessage(List<Player> players, String message) {
         for (Player player : players)
-            if (player.hasPermission("egghunt.notify")) {
-                playersNotified += 1;
-                sendMessage(player, message);
-            }
-
-        logger.log(String.format("Told %d player(s) \"%s\"", playersNotified, message));
+            sendPrivateMessage(player, message);
     }
 
-    /**
-     * Creates sound/particle effects to let the given player know that they have claimed the dragon egg
-     */
-    public static void ShowEggEffects(Location loc) {
-        for (Player p : loc.getWorld().getPlayers()) {
-            p.spawnParticle(Particle.SPELL_WITCH, loc, 50, 0.3, 0.1, 0.3);
-            p.spawnParticle(Particle.PORTAL, loc, 50, 0.3, 0.1, 0.3);
+    private void sendPrivateMessage(List<Player> players, ComponentBuilder message) {
+        players.forEach(p -> sendPrivateMessage(p, message));
+    }
+
+    public void sendPrivateMessage(CommandSender cs, String message) {
+        if (cs instanceof Player) {
+            sendPrivateMessage(((Player) cs), message);
+        } else {
+            sendConsoleMessage(message);
         }
     }
 
-    public static void ShowEggEffects(Player p) {
-        p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 10, 0); //min pitch is 0.5
-        ShowEggEffects(p.getLocation());
+    public void sendPrivateMessage(CommandSender cs, ComponentBuilder message) {
+        if (cs instanceof Player) {
+            sendPrivateMessage(((Player) cs), message);
+        } else {
+            sendConsoleMessage(message);
+        }
     }
 
-    private static String formatMessage(String message) {
-        return String.format("%s%s%s%s%s", PREFIX_FORMAT_CODE, PREFIX_COLOR, RAW_MESSAGE_PREFIX, RESET_CODE, message);
+    public void sendPrivateMessage(Player p, String message) {
+        p.sendMessage(applyFormat(this.prefix + message));
+    }
+
+    public void sendTitle(List<Player> ps, String title, String subtitle ) {
+        ps.forEach(p -> sendTitle(p, title, subtitle, 10, 70, 20));
+    }
+
+    public void sendTitle(Player p, String title, String subtitle ) {
+        sendTitle(p, title, subtitle, 10, 70, 20);
+    }
+
+    public void sendTitle(Player p, String title, String subtitle, int fadeIn, int stay, int fadeOut) {
+        p.sendTitle(applyFormat(title), applyFormat(subtitle), fadeIn, stay, fadeOut);
+    }
+
+    public void sendPrivateMessage(Player p, ComponentBuilder message) {
+        // Create a new ComponentBuilder to prepend the prefix
+        ComponentBuilder prefixedMessage = new ComponentBuilder()
+                .append(this.prefix) // Append the prefix
+                .append(message.create()); // Append the original message
+
+        // Send the combined message to the player
+        p.spigot().sendMessage(applyFormat(prefixedMessage).create());
+    }
+
+    public void sendConsoleMessage(String message) {
+        logger.log(applyFormatConsole(message));
+    }
+
+    public void sendConsoleMessage(ComponentBuilder message) {
+        logger.log(applyFormatConsole(message));
+    }
+
+    public void announce(String message) {
+        List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
+
+        sendPrivateMessage(players, message);
+
+        sendConsoleMessage(message);
+    }
+
+    public void announce(ComponentBuilder message) {
+        List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
+
+        sendPrivateMessage(players, message);
+
+        sendConsoleMessage(message);
+    }
+
+    public String applyFormat(String message) {
+        message = message.replace(">>", "»").replace("<<", "«");
+
+        Pattern hexPattern = Pattern.compile("&#([A-Fa-f0-9]){6}");
+        Matcher matcherHex = hexPattern.matcher(message);
+        while (matcherHex.find()) {
+            ChatColor hexColor = ChatColor.of(matcherHex.group().substring(1));
+            String before = message.substring(0, matcherHex.start());
+            String after = message.substring(matcherHex.end());
+            message = before + hexColor + after;
+            matcherHex = hexPattern.matcher(message);
+        }
+
+        message = ChatColor.translateAlternateColorCodes('&', message);
+
+        return message;
+    }
+
+    private ComponentBuilder applyFormat(ComponentBuilder prefixedMessage) {
+        ComponentBuilder formatted = new ComponentBuilder();
+
+        for ( BaseComponent x : prefixedMessage.create()) {
+            if(x instanceof TextComponent){
+                formatted.append(TextComponent.fromLegacy(applyFormat(((TextComponent)x).getText())));
+            } else {
+                formatted.append(x);
+            } 
+        }
+        return formatted;
+    }
+
+    public static String applyFormatConsole(String message) {
+        message = message.replace(">>", "»").replace("<<", "«");
+
+        Pattern hexPattern = Pattern.compile("&#([A-Fa-f0-9]){6}");
+        Matcher matcherHex = hexPattern.matcher(message);
+        while (matcherHex.find()) {
+            String before = message.substring(0, matcherHex.start());
+            String after = message.substring(matcherHex.end());
+            message = before + after;
+            matcherHex = hexPattern.matcher(message);
+        }
+        return message;
+    }
+
+    private String applyFormatConsole(ComponentBuilder prefixedMessage) {
+        StringBuilder formatted = new StringBuilder();
+
+        for (BaseComponent x : prefixedMessage.create()) {
+            if (x instanceof TextComponent) {
+                formatted.append(applyFormatConsole(((TextComponent) x).getText()));
+            } else {
+                formatted.append(x.toPlainText());
+            }
+        }
+
+        return formatted.toString();
     }
 
 }

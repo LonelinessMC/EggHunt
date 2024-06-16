@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.CompassMeta;
 
+import io.github.J0hnL0cke.egghunt.Plugin;
 import io.github.J0hnL0cke.egghunt.Model.Data;
 import io.github.J0hnL0cke.egghunt.Model.Egg;
 import io.github.J0hnL0cke.egghunt.Model.Data.Egg_Storage_Type;
@@ -20,8 +21,11 @@ public class CommandHandler {
 
     private Data data;
 
-    public CommandHandler(Data data) {
+    private Announcement announcement;
+
+    public CommandHandler(Plugin plugin, Data data) {
         this.data = data;
+        this.announcement = Announcement.getInstance(plugin);
     }
 
     /**
@@ -30,7 +34,7 @@ public class CommandHandler {
     private void sendMessage(CommandSender sender, String message) {
         //make the message formatted
         if (sender instanceof Player) {
-            Announcement.sendMessage((Player) sender, message);
+            announcement.sendPrivateMessage((Player) sender, message);
         } else {
             sender.sendMessage(message);
         }
@@ -44,13 +48,8 @@ public class CommandHandler {
             String storageMsg = data.getEggHolderString(); //"is in <x>"
 
             if (data.getEggType() != Egg_Storage_Type.DNE) {
-                Location origin = null; //get location of player that sent the command for distance calculation
-                if (sender instanceof Player) {
-                    origin = ((Player) sender).getLocation();
-                }
-
-                String locStr = Announcement.formatLocation(data.getEggLocation(), origin);
-                sendMessage(sender, String.format("%s %s at %s.", msgStart, storageMsg, locStr));
+                Location eggLoc = data.getEggLocation();
+                sendMessage(sender, String.format("%s %s at %d %d %d", msgStart, storageMsg, eggLoc.getBlockX(), eggLoc.getBlockY(), eggLoc.getBlockZ()));
             } else {
                 sendMessage(sender, String.format("%s %s.", msgStart, storageMsg));
             }
@@ -81,7 +80,7 @@ public class CommandHandler {
                             heldItem.setItemMeta(compassMeta);
                             sendMessage(sender, "Tracking last known dragon egg position.");
                         } else {
-                            sendMessage(sender, String.format("Not in the same dimension as the egg. The egg is in %s.", Announcement.formatWorld(eggLoc.getWorld(), false)));
+                            sendMessage(sender, String.format("Not in the same dimension as the egg. The egg is in %s.", eggLoc.getWorld().getName()));
                         }
                     } else {
                         sendMessage(sender, "The dragon egg does not exist.");

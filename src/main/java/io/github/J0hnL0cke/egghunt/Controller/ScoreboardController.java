@@ -6,14 +6,14 @@ import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Entity;
 import org.bukkit.scoreboard.Criteria;
-import org.bukkit.scoreboard.Criterias;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.RenderType;
 import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.ScoreboardManager;
 
-import io.github.J0hnL0cke.egghunt.Model.Configuration;
+import io.github.J0hnL0cke.egghunt.Plugin;
+import io.github.J0hnL0cke.egghunt.Controller.ConfigManager.CONFIG_ITEMS;
 import io.github.J0hnL0cke.egghunt.Model.Data;
 import io.github.J0hnL0cke.egghunt.Model.LogHandler;
 import io.github.J0hnL0cke.egghunt.Model.Version;
@@ -26,7 +26,7 @@ public class ScoreboardController {
     private static ScoreboardController thisHandler;
 
     private Data data;
-    private Configuration config;
+    private Plugin plugin;
     private LogHandler logger;
     private Version version;
     private ScoreboardManager manager;
@@ -37,20 +37,20 @@ public class ScoreboardController {
     private static final String EGG_MINUTES_KEY = "eggOwnedMinutes";
     private static final String EGG_SECONDS_KEY = "eggOwnedSeconds";
 
-    public static ScoreboardController getScoreboardHandler(Data data, Configuration configuration, LogHandler logger, Version version) {
+    public static ScoreboardController getScoreboardHandler(Plugin plugin, Data data, LogHandler logger, Version version) {
         if (thisHandler == null) {
-            thisHandler = new ScoreboardController(data, configuration, logger, version);
+            thisHandler = new ScoreboardController(plugin, data, logger, version);
         }
         return thisHandler;
     }
 
-    private ScoreboardController(Data data, Configuration config, LogHandler logger, Version version) {
+    private ScoreboardController(Plugin plugin, Data data, LogHandler logger, Version version) {
         this.data = data;
-        this.config = config;
+        this.plugin = plugin;
         this.logger = logger;
         this.version = version;
 
-        if (config.getKeepScore()) {
+        if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.KEEP_SCORE)) {
             logger.log("Scorekeeping is enabled, loading scoreboard...");
             loadData();
         }
@@ -83,7 +83,7 @@ public class ScoreboardController {
      * @param data
      */
     public void updateScores() {
-        if (config.getKeepScore() && data.getEggType()!= Data.Egg_Storage_Type.DNE) {
+        if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.KEEP_SCORE) && data.getEggType()!= Data.Egg_Storage_Type.DNE) {
             logger.log("Updating scoreboard");
             if(eggMinutes == null || eggSeconds == null){
                 logger.warning("Objective does not exist, cannot update scoreboard!");
@@ -92,7 +92,7 @@ public class ScoreboardController {
 
             if (data.getEggType() == Data.Egg_Storage_Type.ENTITY) {
                 Entity eggEntity = data.getEggEntity();
-                if (config.getNamedEntitiesGetScore()) {
+                if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.NAMED_ENTITIES_KEEP_SCORE)) {
                     if (eggEntity.getCustomName() != null) {
                         incrementScoring(eggEntity.getCustomName()); //prioritize the named entity for scoring
                         return;

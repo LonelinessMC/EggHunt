@@ -12,7 +12,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 
+import io.github.J0hnL0cke.egghunt.Plugin;
 import io.github.J0hnL0cke.egghunt.Controller.Announcement;
+import io.github.J0hnL0cke.egghunt.Controller.ConfigManager;
 import io.github.J0hnL0cke.egghunt.Controller.EggController;
 import io.github.J0hnL0cke.egghunt.Controller.ScoreboardController;
 import io.github.J0hnL0cke.egghunt.Persistence.DataFileDAO;
@@ -38,13 +40,15 @@ public class Data {
     private Block block;
     private Entity entity;
     private UUID entityFallback;
+    private Announcement announcement;
 
     private static final String BUG_STR = "THIS MAY BE A BUG! Please report it at https://github.com/HyperSMP/EggHuntPlugin/issues";
    
 
-    public Data(DataFileDAO dataDao, LogHandler logger) {
+    public Data(Plugin plugin, DataFileDAO dataDao, LogHandler logger) {
         this.dataDao = dataDao;
         this.logger = logger;
+        this.announcement = Announcement.getInstance(plugin);
         loadData();
     }
 
@@ -241,11 +245,11 @@ public class Data {
         dataDao.save();
     }
     
-    public void setEggOwner(Player player, Configuration config) {
+    public void setEggOwner(Player player, ConfigManager config) {
         setEggOwner(player.getUniqueId(), config);
     }
 
-    private void setEggOwner(UUID playerUUID, Configuration config) {
+    private void setEggOwner(UUID playerUUID, ConfigManager config) {
         if (!playerUUID.equals(owner)) { //only update if the egg has actually changed posession
             ScoreboardController.saveData(logger);
             UUID oldOwner = owner;
@@ -263,23 +267,22 @@ public class Data {
                 msg = String.format("%s has claimed the dragon egg!", ownerName);
             }
 
-            Announcement.announce(msg, logger);
+            announcement.announce(msg);
 
             Player p = Bukkit.getPlayer(playerUUID);
             if (p != null) { //make sure player is online
-                Announcement.ShowEggEffects(p);
                 EggController.updateOwnerTag(p, this, config); //update the scoreboard tag of the new owner
             }
         }
     }
 
-    public void resetEggOwner(boolean announce, Configuration config) {
+    public void resetEggOwner(boolean announce, ConfigManager config) {
         ScoreboardController.saveData(logger);
         if (owner != null) {
             Player oldOwner = Bukkit.getPlayer(owner);
             if (announce) { //TODO move announcements somewhere else?
                 String ownerName = Bukkit.getOfflinePlayer(owner).getName();
-                Announcement.announce(String.format("%s no longer owns the dragon egg", ownerName), logger);
+                announcement.announce(String.format("%s no longer owns the dragon egg", ownerName));
             }
 
             log("Egg owner reset");

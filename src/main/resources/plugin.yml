@@ -6,7 +6,7 @@ description: ${project.description}
 
 api-version: '1.17'
 author: J0hnL0cke
-main:  io.github.J0hnL0cke.egghunt.egghunt
+main:  io.github.J0hnL0cke.egghunt.Plugin
 commands:
     locateegg:
       description: Gives the current coordinates of the dragon egg

@@ -26,7 +26,8 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Merchant;
 
-import io.github.J0hnL0cke.egghunt.Model.Configuration;
+import io.github.J0hnL0cke.egghunt.Plugin;
+import io.github.J0hnL0cke.egghunt.Controller.ConfigManager.CONFIG_ITEMS;
 import io.github.J0hnL0cke.egghunt.Model.Data;
 import io.github.J0hnL0cke.egghunt.Model.Egg;
 import io.github.J0hnL0cke.egghunt.Model.LogHandler;
@@ -37,12 +38,12 @@ import io.github.J0hnL0cke.egghunt.Model.LogHandler;
 public class InventoryListener implements Listener {
 
     private LogHandler logger;
-    private Configuration config;
+    private Plugin plugin;
     private Data data;
 
-    public InventoryListener(LogHandler logger, Configuration config, Data data) {
+    public InventoryListener(Plugin plugin, LogHandler logger, Data data) {
         this.logger = logger;
-        this.config = config;
+        this.plugin = plugin;
         this.data = data;
     }
 
@@ -58,9 +59,9 @@ public class InventoryListener implements Listener {
 
         // Check if the dropped item is the egg
         if (Egg.hasEgg(stack)) {
-            data.setEggOwner(event.getPlayer(), config);
+            data.setEggOwner(event.getPlayer(), this.plugin.getConfigManager());
             data.updateEggLocation(item);
-            EggController.makeEggInvulnerable(event.getItemDrop(), config);
+            EggController.makeEggInvulnerable(event.getItemDrop(), this.plugin.getConfigManager());
         }
     }
 
@@ -73,7 +74,7 @@ public class InventoryListener implements Listener {
         if (Egg.hasEgg(event.getItem())) {
             data.updateEggLocation(event.getEntity());
             if (event.getEntity() instanceof Player) {
-                data.setEggOwner((Player) event.getEntity(), config);
+                data.setEggOwner((Player) event.getEntity(), this.plugin.getConfigManager());
             }
         }
     }
@@ -108,7 +109,7 @@ public class InventoryListener implements Listener {
 
         //force an egg in the ender chest to be dropped if enabled in config and if the player is not in creative
         if (otherInv.getType().equals(InventoryType.ENDER_CHEST)) {
-            if (config.getDropEnderchestedEgg() && player.getGameMode() != GameMode.CREATIVE) {
+            if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.DROP_ECHESTED_EGG) && player.getGameMode() != GameMode.CREATIVE) {
                 if (otherInv.contains(Material.DRAGON_EGG)) { 
                     ItemStack egg = otherInv.getItem(otherInv.first(Material.DRAGON_EGG)); //TODO make this work with bundles/shulkers
                     Location playerLoc = player.getLocation();
@@ -131,7 +132,7 @@ public class InventoryListener implements Listener {
         if (Egg.hasEgg(player.getInventory())) {
             //if the player has the egg in their inventory, it will stay there
             data.updateEggLocation(player);
-            data.setEggOwner(player, config);
+            data.setEggOwner(player, this.plugin.getConfigManager());
 
         } else if (Egg.hasEgg(otherInv)) {
 
@@ -191,7 +192,7 @@ public class InventoryListener implements Listener {
     public void onInventoryDragConsider(InventoryDragEvent event) {
         InventoryType inv = event.getInventory().getType(); //this only gets the currently viewed ("top") inventory, which is not necessairly where the items are dragged in/over
         if (event.getWhoClicked().getGameMode() != GameMode.CREATIVE) {
-            if (inv.equals(InventoryType.ENDER_CHEST) || (inv.equals(InventoryType.SHULKER_BOX) && !config.getCanPackageEgg())) {
+            if (inv.equals(InventoryType.ENDER_CHEST) || (inv.equals(InventoryType.SHULKER_BOX) && !this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.CAN_PLAYER_PACKAGE_EGG))) {
                 boolean holdEgg = Egg.hasEgg(event.getOldCursor());
                 if (holdEgg) {
                     event.setCancelled(true);
@@ -211,7 +212,7 @@ public class InventoryListener implements Listener {
     public void onInventoryMoveConsider(InventoryClickEvent event) {
         InventoryType inv = event.getInventory().getType();
         if (event.getWhoClicked().getGameMode() != GameMode.CREATIVE) {
-            if (inv.equals(InventoryType.ENDER_CHEST) || (inv.equals(InventoryType.SHULKER_BOX) && !config.getCanPackageEgg())) {
+            if (inv.equals(InventoryType.ENDER_CHEST) || (inv.equals(InventoryType.SHULKER_BOX) && !this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.CAN_PLAYER_PACKAGE_EGG))) {
                 boolean hoverEgg = Egg.hasEgg(event.getCurrentItem());
                 boolean holdEgg = Egg.hasEgg(event.getCursor());
                 Boolean clickedContainer = null;
@@ -300,7 +301,7 @@ public class InventoryListener implements Listener {
 
                     if ((Egg.hasEgg(cursor) && clicked.getType() == Material.BUNDLE )
                             || (Egg.hasEgg(clicked) && cursor.getType() == Material.BUNDLE)) {
-                        if (!config.getCanPackageEgg()) {
+                        if (!this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.CAN_PLAYER_PACKAGE_EGG)) {
                             event.setCancelled(true);
                             log(String.format("Stopped %s from bundling the egg",
                                     event.getWhoClicked().getName()));
@@ -318,7 +319,7 @@ public class InventoryListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPushConsider(InventoryMoveItemEvent event) {
         //nice try, but it won't work
-        if (!config.getCanPackageEgg()) {
+        if (!this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.CAN_PLAYER_PACKAGE_EGG)) {
             if (event.getDestination().getType().equals(InventoryType.SHULKER_BOX)) {
                 if (Egg.hasEgg(event.getItem())) {
                     event.setCancelled(true);

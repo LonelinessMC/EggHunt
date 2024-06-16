@@ -3,6 +3,7 @@ package io.github.J0hnL0cke.egghunt.Controller;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.bukkit.Bukkit;
 import org.bukkit.TreeType;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
@@ -26,7 +27,8 @@ import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.event.world.PortalCreateEvent.CreateReason;
 import org.bukkit.inventory.ItemStack;
 
-import io.github.J0hnL0cke.egghunt.Model.Configuration;
+import io.github.J0hnL0cke.egghunt.Plugin;
+import io.github.J0hnL0cke.egghunt.Controller.ConfigManager.CONFIG_ITEMS;
 import io.github.J0hnL0cke.egghunt.Model.Data;
 import io.github.J0hnL0cke.egghunt.Model.Data.Egg_Storage_Type;
 import io.github.J0hnL0cke.egghunt.Model.Egg;
@@ -38,14 +40,16 @@ import io.github.J0hnL0cke.egghunt.Model.LogHandler;
  */
 public class EggDestroyListener implements Listener {
     private LogHandler logger;
-    private Configuration config;
+    private Plugin plugin;
     private Data data;
+    private Announcement announcement;
 
 
-    public EggDestroyListener(LogHandler logger, Configuration config, Data data) {
+    public EggDestroyListener(Plugin plugin, LogHandler logger, Data data) {
         this.logger = logger;
-        this.config = config;
+        this.plugin = plugin;
         this.data = data;
+        this.announcement = Announcement.getInstance(plugin);
     }
 
     /**
@@ -59,7 +63,7 @@ public class EggDestroyListener implements Listener {
             if (Egg.hasEgg(item)) {
             	//make sure item is destroyed to prevent dupes
             	event.getEntity().remove();
-                EggController.eggDestroyed(config, data, logger);
+                EggController.eggDestroyed(this.plugin.getConfigManager(), data, logger);
             }
         }
     }
@@ -74,11 +78,11 @@ public class EggDestroyListener implements Listener {
                 || event.getEntity().getType().equals(EntityType.GLOW_ITEM_FRAME)) {
                 ItemFrame frame = (ItemFrame) event.getEntity();
                 if (Egg.hasEgg(frame.getItem())) {
-                    if (config.getEggInvulnerable()) {
+                    if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.EGG_INV)) {
                         log("canceled explosion of egg item frame");
                         event.setCancelled(true);
                     } else {
-                        EggController.eggDestroyed(config, data, logger);
+                        EggController.eggDestroyed(this.plugin.getConfigManager(), data, logger);
                         frame.setItem(null); //make sure item is removed
                     }
                 }
@@ -97,19 +101,19 @@ public class EggDestroyListener implements Listener {
             if (Egg.hasEgg((ItemStack) event.getEntity())) {
                 //remove just in case to prevent dupes
                 event.getEntity().remove();
-                EggController.eggDestroyed(config, data, logger);
+                EggController.eggDestroyed(this.plugin.getConfigManager(), data, logger);
             }
         }
 
         else if (event.getEntityType().equals(EntityType.ENDER_DRAGON)) {
             //if the dragon is killed, respawn the egg
-            if (config.getRespawnEgg()) {
+            if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.RESP_EGG)) {
                 if (data.getEggType() == Egg_Storage_Type.DNE) {
                     //if the egg does not exist
-                    if (config.getEndWorld().getEnderDragonBattle().hasBeenPreviouslyKilled()) {
+                    if (Bukkit.getWorld(this.plugin.getConfigManager().getString(CONFIG_ITEMS.END)).getEnderDragonBattle().hasBeenPreviouslyKilled()) {
                         //if the dragon has already been beaten
-                        EggController.respawnEgg(config, data, logger);
-                        Announcement.announce("The dragon egg has spawned in the end!", logger);
+                        EggController.respawnEgg(this.plugin.getConfigManager(), data, logger);
+                        announcement.announce("The dragon egg has spawned in the end!");
     				}
     			}
     		}
@@ -156,10 +160,10 @@ public class EggDestroyListener implements Listener {
             //as a workaround, allow egg blocks to be destroyed, but respawn the egg as an item
 
             if (!eggs.isEmpty()) {
-                if (config.getEggInvulnerable()) {
+                if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.EGG_INV)) {
                 
                     for (Block egg : eggs) {
-                        EggController.spawnEggItem(egg.getLocation(), config, data);
+                        EggController.spawnEggItem(egg.getLocation(), this.plugin.getConfigManager(), data);
                     }
                     logger.log("Egg overwritten by the end spawn platform, spawning egg item at block location");
 
@@ -168,7 +172,7 @@ public class EggDestroyListener implements Listener {
                         Egg.removeEgg(b); //delete egg
                     }
                     log("Dragon egg was replaced");
-                    EggController.eggDestroyed(config, data, logger);
+                    EggController.eggDestroyed(this.plugin.getConfigManager(), data, logger);
                 }
             }
             
@@ -190,16 +194,16 @@ public class EggDestroyListener implements Listener {
         //preserve the egg on the fountain if it's respawned there
         //this is an edge case, since the dragon will perch above the egg unless the egg is placed mid-perch or the dragon is pushed into it
         if (e.getType().equals(EntityType.ENDER_DRAGON)) {
-            if (!config.getEggInvulnerable() && config.getRespawnEgg()) {
+            if (!this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.EGG_INV) && this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.RESP_EGG) ) {
                 
                 ArrayList<Block> eggs = findEggs(event.blockList());
 
                 for (Block egg : eggs) {
                     if (Egg.isOnlyEgg(egg)) {
-                        if (EggController.getEggRespawnLocation(config).getBlock().equals(egg)) {
+                        if (EggController.getEggRespawnLocation(this.plugin.getConfigManager()).getBlock().equals(egg)) {
                             //if the egg is set to respawn, and is overlapped by the dragon at the respawn point,
                             //preserve it rather than letting it be deleted
-                            data.resetEggOwner(false, config);
+                            data.resetEggOwner(false, this.plugin.getConfigManager());
                             event.blockList().remove(egg);
                             //log("prevented dragon destroying respawned egg");
                             //continue on to check if other blocks are the egg
@@ -237,7 +241,7 @@ public class EggDestroyListener implements Listener {
         ArrayList<Block> eggs = findEggs(blocks);
 
         if (!eggs.isEmpty()) {
-            if (config.getEggInvulnerable()) { //prevent egg destruction
+            if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.EGG_INV) ) { //prevent egg destruction
                 for (Block b : eggs) {
                     blocks.remove(b); //remove egg from list of blocks to delete
                 }
@@ -248,7 +252,7 @@ public class EggDestroyListener implements Listener {
                     Egg.removeEgg(b); //delete egg
                 }
                 log("Dragon egg was replaced");
-                EggController.eggDestroyed(config, data, logger);
+                EggController.eggDestroyed(this.plugin.getConfigManager(), data, logger);
             }
         }
     }
@@ -269,7 +273,7 @@ public class EggDestroyListener implements Listener {
         ArrayList<Block> eggs = findEggs(blocks);
 
         if (!eggs.isEmpty()) {
-            if (config.getEggInvulnerable()) { //prevent egg destruction
+            if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.EGG_INV) ) { //prevent egg destruction
                 for (int i = eggs.size()-1; i >= 0; i--) { //iterate over every egg found backwards
                     int index = blocks.indexOf(eggs.get(i)); //get where the egg is in block list
                     blockStates.remove(index); //remove that item from the blockstate list
@@ -281,7 +285,7 @@ public class EggDestroyListener implements Listener {
                     Egg.removeEgg(b); //delete egg
                 }
                 log("Dragon egg was replaced");
-                EggController.eggDestroyed(config, data, logger);
+                EggController.eggDestroyed(this.plugin.getConfigManager(), data, logger);
             }
         }
     }
@@ -293,7 +297,7 @@ public class EggDestroyListener implements Listener {
      */
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onConsiderEntityDamageEvent(EntityDamageEvent event) {
-        if (config.getEggInvulnerable()) {
+        if (this.plugin.getConfigManager().getBoolean(CONFIG_ITEMS.EGG_INV) ) {
             Entity entity = event.getEntity();
             if (entity.getType().equals(EntityType.DROPPED_ITEM)) {
                 if (Egg.hasEgg((Item) entity)) {

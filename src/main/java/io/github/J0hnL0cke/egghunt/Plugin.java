@@ -10,51 +10,51 @@ import org.bukkit.scheduler.BukkitTask;
 
 import io.github.J0hnL0cke.egghunt.Controller.Announcement;
 import io.github.J0hnL0cke.egghunt.Controller.CommandHandler;
+import io.github.J0hnL0cke.egghunt.Controller.ConfigManager;
 import io.github.J0hnL0cke.egghunt.Controller.EggController;
 import io.github.J0hnL0cke.egghunt.Controller.EggDestroyListener;
 import io.github.J0hnL0cke.egghunt.Controller.MiscListener;
 import io.github.J0hnL0cke.egghunt.Controller.ScoreboardController;
+import io.github.J0hnL0cke.egghunt.Controller.ConfigManager.CONFIG_ITEMS;
 import io.github.J0hnL0cke.egghunt.Controller.EventScheduler;
 import io.github.J0hnL0cke.egghunt.Controller.InventoryListener;
-import io.github.J0hnL0cke.egghunt.Model.Configuration;
 import io.github.J0hnL0cke.egghunt.Model.Data;
 import io.github.J0hnL0cke.egghunt.Model.LogHandler;
 import io.github.J0hnL0cke.egghunt.Model.Version;
-import io.github.J0hnL0cke.egghunt.Persistence.ConfigFileDAO;
 import io.github.J0hnL0cke.egghunt.Persistence.DataFileDAO;
 
 
-public final class egghunt extends JavaPlugin {
-    Configuration config;
+public final class Plugin extends JavaPlugin {
     Data data;
     Version version;
     CommandHandler commandHandler;
+    ConfigManager configManager;
 
     BukkitTask belowWorldTask;
     LogHandler logger;
 	
 	@Override
     public void onEnable() {
-        //create logger instance
-        logger = new LogHandler(getLogger());
+        logger = LogHandler.getInstance(getLogger());
+        logger.info("Enabling the plugin");
 
-	    logger.info("Enabling EggHunt..."); //server already provides an enable message
-        saveDefaultConfig();
-		
-        //create model instances using dependency injection
-        config = new Configuration(new ConfigFileDAO(this));
-        data = new Data(DataFileDAO.getDataDAO(this, logger), logger);
+        configManager = new ConfigManager(this);
+        if(configManager.getBoolean(ConfigManager.CONFIG_ITEMS.DEBUG)){
+            logger.setDebug(true);
+        }
+
+        data = new Data(this, DataFileDAO.getDataDAO(this, logger), logger);
         version = new Version();
 
-        logger.setDebug(config.getDebugEnabled());
+        logger.setDebug(configManager.getBoolean(CONFIG_ITEMS.DEBUG));
 
         //create controller instances
-        ScoreboardController scoreboardController = ScoreboardController.getScoreboardHandler(data, config, logger, version);
-        MiscListener miscListener = new MiscListener(logger, config, data);
-        InventoryListener inventoryListener = new InventoryListener(logger, config, data);
-        EggDestroyListener destroyListener = new EggDestroyListener(logger, config, data);
-        EventScheduler scheduler = new EventScheduler(config, data, logger);
-        commandHandler = new CommandHandler(data);
+        ScoreboardController.getScoreboardHandler(this, data, logger, version);
+        MiscListener miscListener = new MiscListener(this, logger, data);
+        InventoryListener inventoryListener = new InventoryListener(this, logger, data);
+        EggDestroyListener destroyListener = new EggDestroyListener(this, logger, data);
+        EventScheduler scheduler = new EventScheduler(this, data, logger);
+        commandHandler = new CommandHandler(this, data);
 		
 		//register event handlers
         logger.log("Registering event listeners...");
@@ -82,9 +82,9 @@ public final class egghunt extends JavaPlugin {
                 if (eggHolder instanceof Player) {
                     logger.log("Egg is held by a player, dropping egg...");
                     Player p = (Player) eggHolder;
-                    EggController.dropEgg(p, data, config);
+                    EggController.dropEgg(p, data, this.getConfigManager());
                     //in case the server isn't restarting, let the player know what happend
-                    Announcement.sendMessage(p, "The dragon egg was dropped from your inventory");
+                    Announcement.getInstance(this).sendPrivateMessage(p, "The dragon egg was dropped from your inventory");
                 }
             }
             logger.log("Saving data...");
@@ -102,6 +102,8 @@ public final class egghunt extends JavaPlugin {
         return commandHandler.onCommand(sender, cmd, label, args);
     }
 
-    
+    public ConfigManager getConfigManager(){
+        return this.configManager;
+    }
     
 }
