@@ -68,6 +68,8 @@ public class MiscListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         EggController.dropEgg(player, data, this.plugin.getConfigManager());
+        if(data.getEggOwner().getName() == player.getName())
+            data.resetEggOwner(true, this.plugin.getConfigManager());
     }
 
     /**

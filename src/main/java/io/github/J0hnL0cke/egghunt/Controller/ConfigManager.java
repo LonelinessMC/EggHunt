@@ -13,7 +13,7 @@ public class ConfigManager {
     public enum CONFIG_ITEMS {
         //TODO if any of the keys is the same return an error, hopefully at compile time
         CHAT_PREFIX("chatPrefix", "&#FE6847[&#FBB13CLoneWeek EggOwn&#FE6847] "),
-        SCOREBOARD_ID("scoreboardId", "punteggiomobraid"),
+        SCOREBOARD_ID("scoreboardId", "punteggio"),
         END("end", "world_the_end"),
         RESET_OWNER("reset_owner", true),
         EGG_INV("egg_inv", false),
